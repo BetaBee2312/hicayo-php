@@ -543,23 +543,26 @@ const handleSpaceDrop = () => {
 }
 
 
-const fetchRewardFromDB = async () => {
-  const res = await fetch('get_hadiah.php')
-  return await res.json()
-}
+const GAME_ID = Number(window.GAME_ID || 0)
 
-const claimReward = async no => {
-  await fetch('claim-hadiah.php', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `no=${no}`,
-  })
+const fetchRewardFromDB = async () => {
+  if (!GAME_ID) return null
+  try {
+    const res = await fetch('claim-hadiah.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ id_permainan: String(GAME_ID) })
+    })
+    const result = await res.json()
+    if (!res.ok || !result.success) throw new Error(result.message || 'Hadiah gagal diklaim')
+    return result.data
+  } catch (error) {
+    console.error('Gagal mengambil hadiah:', error)
+    return null
+  }
 }
 
 const showRewardAlert = async reward => {
-  // Kurangi stok
-  await claimReward(reward.no);
-
   // Pilih suara berdasarkan kategori
   let audioSrc = '';
   if (reward.kategori === 'utama') {

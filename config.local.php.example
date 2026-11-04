@@ -1,0 +1,8 @@
+<?php
+// Salin file ini menjadi config.local.php lalu isi kredensial database lokal.
+return [
+    'host' => '127.0.0.1',
+    'user' => 'root',
+    'password' => '',
+    'name' => 'db_claw',
+];

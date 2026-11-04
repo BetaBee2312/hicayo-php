@@ -1,512 +1,80 @@
 <?php
-require "config.php";
-
-$query = mysqli_query($conn, "
-  SELECT no, nama_hadiah, qty, kategori
-  FROM tb_hadiah
-  ORDER BY kategori DESC, no ASC
-");
-
-$hadiahUtama = [];
-$hadiahUmum  = [];
-
-while ($row = mysqli_fetch_assoc($query)) {
-
-  if ($row['kategori'] === 'utama') {
-    $hadiahUtama[] = $row;
-  } else {
-    $hadiahUmum[] = $row;
-  }
-
+require 'config.php';
+$games = [];
+$migrationReady = true;
+try {
+    $result = $conn->query("
+        SELECT p.id_permainan,p.judul,p.nama_cabang,p.slug,p.status,p.created_at,
+               COUNT(h.no) AS jumlah_jenis_hadiah,COALESCE(SUM(h.qty),0) AS total_stok
+        FROM tb_permainan p
+        LEFT JOIN tb_hadiah h ON h.id_permainan=p.id_permainan
+        GROUP BY p.id_permainan,p.judul,p.nama_cabang,p.slug,p.status,p.created_at
+        ORDER BY p.created_at DESC,p.id_permainan DESC
+    ");
+    while ($row=$result->fetch_assoc()) $games[]=$row;
+} catch (mysqli_sql_exception $e) {
+    $migrationReady=false;
+    error_log('Dashboard multi-cabang belum siap: '.$e->getMessage());
 }
+function e($value) { return htmlspecialchars((string)$value,ENT_QUOTES,'UTF-8'); }
 ?>
-
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style-v30.css">
-    <script src="sweetalert2@11.js"></script>
-    <title>Claw Machine</title>
-  </head>
-  <body>
-    <button id="openEdit" class="btn-edit">Edit Hadiah</button>
-      <div class="top-icons">
-        <img src="gambar/icon.png" class="top-icon">
-        <img src="keranjang/claw-icon.png" class="top-icon">
-      </div>
-    <div class="wrapper">
-      <div class="collection-box pix"></div>
-      <div class="claw-machine">
-        <div class="box pix">
-          <div class="machine-top pix">
-            <div class="arm-joint pix">
-              <div class="arm pix">
-                <div class="claws pix"></div>
-              </div>
-            </div>
-            <div class="rail hori pix"></div>
-            <div class="rail vert pix"></div>
-          </div>
-          <div class="machine-bottom pix">
-            <div class="floor-hole">
-              <span class="floor-hole-label">HADIAH</span>
-            </div>
-          </div>
-        </div>
-        <div class="control pix">
-          <div class="cover left"></div>
-          <button class="horizon pix"></button>
-          <button class="vertic pix"></button>
-          <div class="cover right">
-            <div class="instruction pix"></div>
-          </div>
-          <div class="cover bottom"></div>
-          <div class="cover top">
-            <div class="collection-arrow pix"></div>
-          </div>
-          <div class="collection-point pix"></div>
-        </div>
-      </div>
-    </div>
-    <div class="sign">
-      Claw Machine Yomart
-    </div>
-    <div class="running-text-container">
-    <div class="running-text">
-        <img src="gambar/icon.png" style="width:40px"> Setiap Belanja senilai Rp. 150.000 dapat mengikuti Games Hi! Cayo *tidak berlaku kelipatan <img src="gambar/icon.png" style="width:40px">
-    </div>
-    <div class="running-text">
-        <img src="gambar/icon.png" style="width: 40px"> Setiap Belanja senilai Rp. 150.000 dapat mengikuti Games Hi! Cayo *tidak berlaku kelipatan <img src="gambar/icon.png" style="width:40px">
-    </div>
-</div>
-<!-- Tambahkan ini di body -->
-<div id="custom-alert" style="display:none;">
-  <div class="overlay"></div>
-  <div class="alert-box">
-    <h2 id="alert-title"></h2>
-    <p id="alert-text"></p>
-    <button id="alert-btn">Tutup</button>
-  </div>
-</div>
-
+<html lang="id"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hi! Cayo | Kelola Permainan</title>
 <style>
-#custom-alert .overlay {
-  position: fixed;
-  top:0; left:0; right:0; bottom:0;
-  background: rgba(0,0,0,0.5);
-  z-index: 999;
-}
-
-#custom-alert .alert-box {
-  position: fixed;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  background: #fff;
-  padding: 20px 30px;
-  border-radius: 8px;
-  text-align: center;
-  z-index: 1000;
-  min-width: 250px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-}
-
-#custom-alert button {
-  margin-top: 15px;
-  padding: 8px 16px;
-  background: #3085d6;
-  color: #fff;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-#custom-alert button:hover {
-  background: #2573c6;
-}
-.btn-edit{
-  position: fixed;
-  top: 15px;
-  right: 15px;
-  padding: 10px 15px;
-  background: #ff9800;
-  border: none;
-  color: white;
-  border-radius: 6px;
-  cursor: pointer;
-  z-index: 2000;
-}
-
-/* ===== MODAL ===== */
-.modal-edit{
-  display:none;
-  position:fixed;
-  z-index:999;
-  left:0;
-  top:0;
-  width:100%;
-  height:100%;
-  background:rgba(0,0,0,0.6);
-  overflow:auto;
-}
-
-/* ===== MODAL CONTENT ===== */
-.modal-content{
-  background:#ffffff;
-  margin:5% auto;
-  padding:25px;
-  width:90%;
-  max-width:800px;
-  border-radius:12px;
-  box-shadow:0 10px 30px rgba(0,0,0,0.3);
-  font-family:sans-serif;
-  animation:modalFade 0.2s ease;
-}
-
-@keyframes modalFade{
-  from{
-    transform:translateY(-20px);
-    opacity:0;
-  }
-  to{
-    transform:translateY(0);
-    opacity:1;
-  }
-}
-
-/* ===== CLOSE BUTTON ===== */
-#closeModal{
-  float:right;
-  font-size:28px;
-  font-weight:bold;
-  cursor:pointer;
-  color:#999;
-}
-
-#closeModal:hover{
-  color:#000;
-}
-
-/* ===== TABLE ===== */
-.table-edit{
-  width:100%;
-  border-collapse:collapse;
-  margin-top:10px;
-}
-
-.table-edit th{
-  background:#f2f2f2;
-  padding:10px;
-  text-align:left;
-  border-bottom:2px solid #ddd;
-}
-
-.table-edit td{
-  padding:8px;
-  border-bottom:1px solid #eee;
-}
-
-/* ===== INPUT ===== */
-.table-edit input[type="text"],
-.table-edit input[type="number"],
-.table-edit select{
-  width:100%;
-  padding:6px;
-  border:1px solid #ccc;
-  border-radius:6px;
-  font-size:14px;
-  box-sizing:border-box;
-}
-
-/* ===== BUTTONS ===== */
-.table-edit button{
-  border:none;
-  padding:6px 10px;
-  border-radius:6px;
-  cursor:pointer;
-  font-size:14px;
-}
-
-.table-edit button:hover{
-  opacity:0.85;
-}
-
-/* save */
-.table-edit button[type="submit"]{
-  background:#4CAF50;
-  color:white;
-}
-
-/* delete */
-.table-edit button[onclick^="hapusHadiah"]{
-  background:#e74c3c;
-  color:white;
-}
-
-/* ===== ADD BUTTON ===== */
-.btn-add{
-  background:#3498db;
-  color:white;
-  border:none;
-  padding:10px 16px;
-  border-radius:8px;
-  cursor:pointer;
-  font-size:14px;
-}
-
-.btn-add:hover{
-  background:#2980b9;
-}
-
-.onlymobilecansee {
-  position: absolute;
-  bottom: 50px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 20;
-  width: 92%;
-  max-width: 420px;
-}
-
-/* ===== UTAMA ===== */
-.hadiah-utama {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 10px;
-}
-
-.hadiah-utama .hadiah-box {
-  width: 100%;
-  max-width: 280px;
-}
-
-/* ===== UMUM ===== */
-.hadiah-umum {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(85px,1fr));
-  gap: 6px;
-  padding: 0 4px;
-}
-
-/* ===== BOX ===== */
-.hadiah-box {
-  background: linear-gradient(135deg,#f59e0b,#fde047);
-  color: rgb(0, 0, 0);
-  border-radius: 8px;
-  padding: 6px;
-  text-align: center;
-  font-size: 11px;
-  line-height: 1.2;
-
-  box-shadow: 0 3px 8px rgba(0,0,0,0.25);
-}
-
-.hadiah-box b {
-  font-size: 15px;
-  display: block;
-  margin-top: 2px;
-}
-
-/* hadiah utama highlight */
-.hadiah-box.utama {
-  background: linear-gradient(135deg,#f50b0b,#ff3636);
-  color: #fafafa;
-  font-weight: bold;
-}
-
-</style>
-<script src="script-new.js"></script>
-
-<div id="editModal" class="modal-edit">
-  <div class="modal-content">
-
-    <span id="closeModal">&times;</span>
-    <h2>Edit Hadiah</h2>
-
-    <table class="table-edit" id="hadiahTable">
-      <tr>
-        <th>No</th>
-        <th>Nama</th>
-        <th>Qty</th>
-        <th>Kategori</th>
-        <th>Aksi</th>
-      </tr>
-
-      <?php 
-      $query = mysqli_query($conn,"SELECT * FROM tb_hadiah ORDER BY no ASC");
-      while($row = mysqli_fetch_assoc($query)){
-      ?>
-      <!-- Hapus tag <form> dari sini -->
-      <tr>
-          <td><?= $row['no'] ?></td>
-          <td>
-              <!-- Tambahkan class 'input-nama' agar mudah diidentifikasi JS -->
-              <input type="hidden" class="input-no" value="<?= $row['no'] ?>">
-              <input type="text" class="input-nama" value="<?= htmlspecialchars($row['nama_hadiah']) ?>">
-          </td>
-          <td>
-              <input type="number" class="input-qty" value="<?= $row['qty'] ?>" style="width:60px">
-          </td>
-          <td>
-              <select class="input-kategori">
-                  <option value="umum" <?= $row['kategori']=="umum"?"selected":"" ?>>Umum</option>
-                  <option value="utama" <?= $row['kategori']=="utama"?"selected":"" ?>>Utama</option>
-              </select>
-          </td>
-          <td>
-              <!-- Tombol hapus tetap ada -->
-              <button type="button" onclick="hapusHadiah(<?= $row['no'] ?>)">🗑</button>
-          </td>
-      </tr>
-      <!-- Hapus penutup </form> -->
-      <?php } ?>
-    </table>
-
-    <br>
-    <button type="button" class="btn-save-all" onclick="simpanSemua()">Simpan Semua Perubahan</button>
-    <button onclick="tambahHadiah()" class="btn-add">+ Tambah Hadiah</button>
-
-  </div>
-</div>
-
-<script>
-const modal = document.getElementById("editModal");
-const openBtn = document.getElementById("openEdit");
-const closeBtn = document.getElementById("closeModal");
-
-openBtn.onclick = () => modal.style.display = "block";
-closeBtn.onclick = () => modal.style.display = "none";
-
-window.onclick = function(e){
-  if(e.target == modal){
-    modal.style.display = "none";
-  }
-}
-
-function hapusHadiah(no){
-
-if(confirm("Hapus hadiah ini?")){
-
-fetch("delete_hadiah.php",{
-method:"POST",
-headers:{
-"Content-Type":"application/x-www-form-urlencoded"
-},
-body:"no="+no
-})
-.then(()=>location.reload())
-
-}
-
-}
-
-function tambahHadiah(){
-
-let table = document.getElementById("hadiahTable");
-let row = table.insertRow(-1);
-
-row.innerHTML = `
-<td>new</td>
-
-<td>
-<input type="text" id="nama_baru" placeholder="Nama hadiah" required>
-</td>
-
-<td>
-<input type="number" id="qty_baru" value="1" style="width:60px" required>
-</td>
-
-<td>
-<select id="kategori_baru">
-<option value="umum">Umum</option>
-<option value="utama">Utama</option>
-</select>
-</td>
-
-<td>
-<button type="button" onclick="simpanHadiah()">✔</button>
-<button type="button" onclick="this.closest('tr').remove()">✖</button>
-</td>
-`;
-
-}
-
-function simpanHadiah(){
-
-let nama = document.getElementById("nama_baru").value;
-let qty = document.getElementById("qty_baru").value;
-let kategori = document.getElementById("kategori_baru").value;
-
-fetch("add_hadiah.php",{
-method:"POST",
-headers:{
-"Content-Type":"application/x-www-form-urlencoded"
-},
-body:`nama_hadiah=${encodeURIComponent(nama)}&qty=${qty}&kategori=${kategori}`
-})
-.then(()=>location.reload());
-
-}
-function simpanSemua() {
-    let rows = document.querySelectorAll("#hadiahTable tr");
-    let dataHadiah = [];
-
-    // Loop mulai dari i=1 (skip header)
-    for (let i = 1; i < rows.length; i++) {
-        let row = rows[i];
-        
-        // Ambil input-input di dalam baris
-        let inputNama = row.querySelector(".input-nama");
-        if (inputNama) {
-            // Cek apakah ini data baru atau lama
-            let tdNo = row.cells[0]; 
-            let no = tdNo.getAttribute('data-no') || row.querySelector(".input-no")?.value;
-
-            dataHadiah.push({
-                no: no, // Akan bernilai 'new' jika baris baru
-                nama: inputNama.value,
-                qty: row.querySelector(".input-qty").value,
-                kategori: row.querySelector(".input-kategori").value
-            });
-        }
-    }
-
-    fetch("update-all-hadiah.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dataHadiah)
-    })
-    .then(response => response.text())
-    .then(() => {
-        alert("Berhasil disimpan!");
-        location.reload();
-    });
-}
-
-function tambahHadiah(){
-    let table = document.getElementById("hadiahTable");
-    let row = table.insertRow(-1);
-
-    // Kita buat struktur yang persis dengan baris lama
-    row.innerHTML = `
-        <td data-no="new">New</td> 
-        <td>
-            <input type="text" class="input-nama" placeholder="Nama hadiah">
-        </td>
-        <td>
-            <input type="number" class="input-qty" value="1" style="width:60px">
-        </td>
-        <td>
-            <select class="input-kategori">
-                <option value="umum">Umum</option>
-                <option value="utama">Utama</option>
-            </select>
-        </td>
-        <td>
-            <button type="button" onclick="this.closest('tr').remove()">✖</button>
-        </td>
-    `;
-}
-</script>
-  </body>
-</html>
+:root{color-scheme:dark;--bg:#10131b;--line:#30394b;--text:#f5f7fb;--muted:#9ca8ba;--accent:#ffc247}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 10% 0%,#222b3e 0,transparent 34%),var(--bg);color:var(--text);font:15px/1.5 Inter,Segoe UI,Arial,sans-serif;min-height:100vh}
+.shell{width:min(1180px,calc(100% - 36px));margin:auto;padding:34px 0 60px}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:34px}
+.brand{display:flex;align-items:center;gap:12px;font-weight:800}.brand-mark{width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,#ffe18e,#f5a623);display:grid;place-items:center;color:#222;font-size:21px}
+.eyebrow{color:var(--accent);font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.14em}h1{font-size:clamp(27px,4vw,40px);line-height:1.1;margin:8px 0}h2{font-size:19px;margin:0 0 5px}p{color:var(--muted);margin:0}
+.layout{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1.3fr);gap:22px;align-items:start}.panel{background:linear-gradient(145deg,#1c2330,#171c27);border:1px solid var(--line);border-radius:20px;padding:23px;box-shadow:0 18px 50px #0002}
+.panel-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:20px}.field{display:grid;gap:7px;margin:15px 0}label{font-size:13px;font-weight:700;color:#dce3ef}
+input,select{width:100%;min-width:0;padding:12px 13px;border-radius:10px;border:1px solid #394457;background:#101621;color:var(--text);font:inherit;outline:none}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px #ffc24720}.gift-list{display:grid;gap:10px;margin-top:12px}
+.gift-row{display:grid;grid-template-columns:minmax(0,1.5fr) 90px 115px 38px;gap:8px;align-items:center}.gift-row input,.gift-row select{padding:10px 9px}
+.icon-btn{height:42px;border:1px solid #4b3540;background:#30202a;color:#ff9a9a;border-radius:10px;font-size:20px;cursor:pointer}
+.btn{border:0;border-radius:11px;padding:12px 16px;font:inherit;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}.btn-primary{background:linear-gradient(135deg,#ffdb82,#ffb42e);color:#251b08}.btn-secondary{border:1px solid var(--line);background:#222b3b;color:var(--text)}
+.btn-block{width:100%;margin-top:18px}.add-gift{margin-top:12px;width:100%}.game-list{display:grid;gap:12px;margin-top:18px}
+.game-card{border:1px solid var(--line);border-radius:15px;padding:16px;background:#171d28}.game-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.game-title{font-weight:800;font-size:16px}.game-branch{color:var(--muted);font-size:13px;margin-top:2px}.stats{display:flex;gap:17px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin:14px 0}.stats b{color:#fff;font-size:14px;margin-right:4px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}.status{font-size:11px;border-radius:999px;padding:5px 9px;background:#163d32;color:#78e6b9;font-weight:800}
+.empty{padding:34px 16px;text-align:center;border:1px dashed #465167;border-radius:14px;color:var(--muted)}.notice{padding:14px 16px;border-radius:12px;background:#392d18;border:1px solid #755b2c;color:#ffe1a1;margin:18px 0}.count{font-size:12px;color:var(--muted)}
+@media(max-width:850px){.layout{grid-template-columns:1fr}.shell{padding-top:22px}.gift-row{grid-template-columns:minmax(0,1fr) 76px 100px 36px}}
+@media(max-width:460px){.gift-row{grid-template-columns:1fr 75px 90px 34px}.gift-row input,.gift-row select{font-size:12px;padding:10px 6px}.panel{padding:17px}.shell{width:calc(100% - 22px)}}
+</style></head><body><div class="shell">
+<header class="top"><div class="brand"><div class="brand-mark">✦</div><div>HI! CAYO<div class="count">CLAW MACHINE MANAGER</div></div></div><div class="eyebrow">Multi-Cabang</div></header>
+<section style="margin-bottom:25px"><div class="eyebrow">Dashboard permainan</div><h1>Kelola mesin capit<br>semua cabang.</h1><p>Buat konfigurasi hadiah per cabang, lalu jalankan mesin dengan satu sistem yang sama.</p></section>
+<?php if (!$migrationReady): ?>
+<div class="notice">Database multi-cabang belum disiapkan. Backup database, lalu jalankan <strong>database-multi-cabang.sql</strong> melalui phpMyAdmin. Setelah itu muat ulang halaman ini.</div>
+<?php else: ?><div class="layout">
+<section class="panel"><div class="panel-head"><div><h2>Buat permainan baru</h2><p>Isi identitas cabang dan daftar hadiah.</p></div><span class="eyebrow">01 / Setup</span></div>
+<form action="save_game.php" method="POST">
+<div class="field"><label for="judul">Judul permainan</label><input id="judul" name="judul" maxlength="120" placeholder="Contoh: Hi! Cayo" required></div>
+<div class="field"><label for="nama_cabang">Nama cabang</label><input id="nama_cabang" name="nama_cabang" maxlength="160" placeholder="Contoh: Yomart Cibaduyut" required></div>
+<div style="display:flex;justify-content:space-between;align-items:end;gap:10px;margin-top:22px"><div><h2>Daftar hadiah</h2><p class="count">Stok dan kategori setiap hadiah.</p></div><span class="eyebrow">02 / Rewards</span></div>
+<div id="giftList" class="gift-list"><div class="gift-row">
+<input name="hadiah[0][nama_hadiah]" maxlength="255" placeholder="Nama hadiah" required>
+<input name="hadiah[0][qty]" type="number" min="0" value="1" aria-label="Jumlah stok" required>
+<select name="hadiah[0][kategori]" aria-label="Kategori hadiah"><option value="umum">Umum</option><option value="utama">Utama</option></select>
+<button class="icon-btn" type="button" onclick="removeGift(this)" aria-label="Hapus hadiah">×</button>
+</div></div>
+<button class="btn btn-secondary add-gift" type="button" onclick="addGift()">＋ Tambah hadiah</button>
+<button class="btn btn-primary btn-block" type="submit">Generate permainan →</button></form></section>
+<section class="panel"><div class="panel-head"><div><h2>Permainan terdaftar</h2><p>Setiap cabang memiliki stok terpisah.</p></div><span class="eyebrow">03 / Manage</span></div>
+<?php if (!$games): ?><div class="empty">Belum ada permainan. Buat konfigurasi cabang pertama di formulir sebelah.</div>
+<?php else: ?><div class="game-list"><?php foreach($games as $game): ?>
+<article class="game-card"><div class="game-top"><div><div class="game-title"><?= e($game['judul']) ?></div><div class="game-branch"><?= e($game['nama_cabang']) ?></div></div><span class="status"><?= $game['status']==='aktif'?'AKTIF':'NONAKTIF' ?></span></div>
+<div class="stats"><span><b><?= (int)$game['jumlah_jenis_hadiah'] ?></b> jenis hadiah</span><span><b><?= (int)$game['total_stok'] ?></b> total stok</span><span><?= e($game['slug']) ?></span></div>
+<div class="actions"><a class="btn btn-primary" href="game.php?id=<?= (int)$game['id_permainan'] ?>">▶ Mainkan</a><a class="btn btn-secondary" href="game.php?id=<?= (int)$game['id_permainan'] ?>#editModal">Atur hadiah</a></div></article>
+<?php endforeach; ?></div><?php endif; ?></section></div><?php endif; ?>
+</div><script>
+let giftIndex=1;
+function addGift(){const row=document.createElement('div');row.className='gift-row';row.innerHTML=
+'<input name="hadiah['+giftIndex+'][nama_hadiah]" maxlength="255" placeholder="Nama hadiah" required>'+
+'<input name="hadiah['+giftIndex+'][qty]" type="number" min="0" value="1" aria-label="Jumlah stok" required>'+
+'<select name="hadiah['+giftIndex+'][kategori]" aria-label="Kategori hadiah"><option value="umum">Umum</option><option value="utama">Utama</option></select>'+
+'<button class="icon-btn" type="button" onclick="removeGift(this)" aria-label="Hapus hadiah">×</button>';
+document.getElementById('giftList').appendChild(row);giftIndex++;}
+function removeGift(button){const rows=document.querySelectorAll('#giftList .gift-row');if(rows.length<=1){rows[0].querySelector('input').value='';rows[0].querySelectorAll('input')[1].value='1';rows[0].querySelector('select').value='umum';return;}button.closest('.gift-row').remove();}
+</script></body></html>
