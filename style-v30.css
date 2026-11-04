@@ -1,0 +1,855 @@
+*,
+::before,
+::after {
+  box-sizing: border-box;
+}
+
+/* ===== FULL SCREEN POV MODE ===== */
+/* Kita sekarang BERADA di dalam mesin — background = dinding kaca */
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  padding: 0;
+  margin: 0;
+  font-family: sans-serif;
+
+  /* Background = suasana dalam mesin: gradasi biru/hijau seperti cahaya kaca */
+  background: 
+    radial-gradient(ellipse at 50% 30%, rgba(100,220,255,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse at 20% 80%, rgba(80,200,120,0.12) 0%, transparent 50%),
+    url(keranjang/bg.jpeg);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  /* Efek kaca: overlay tipis */
+  position: relative;
+
+  --brown: #57280f;
+  --blue: #33a5da;
+  --dark-blue: #000000;
+  --machine-color: #f8ffd0;
+  --machine-width: 160px;
+  --m: 2;
+
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+/* Efek kaca refleksi di pojok */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: 
+    linear-gradient(135deg, rgba(255,255,255,0.07) 0%, transparent 40%),
+    linear-gradient(315deg, rgba(100,200,255,0.05) 0%, transparent 40%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Bingkai kaca mesin (border layar) */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  border: 6px solid rgba(180, 220, 255, 0.35);
+  box-shadow: 
+    inset 0 0 60px rgba(100, 200, 255, 0.12),
+    inset 0 0 8px rgba(255, 255, 255, 0.15),
+    0 0 0 2px rgba(80, 160, 200, 0.2);
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ===== WRAPPER: sekarang full screen ===== */
+.wrapper {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: block; /* bukan flex centered lagi */
+  z-index: 2;
+}
+
+/* ===== CLAW MACHINE: full screen, tanpa border kotak ===== */
+.claw-machine {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  border: none; /* hapus border kotak */
+  overflow: visible;
+  background: transparent;
+}
+
+/* ===== BOX (area mesin): full screen ===== */
+.box {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: transparent;
+  --w: 100vw;
+  --h: 100vh;
+}
+
+/* Garis horizontal pemisah (area atas mesin) — disembunyikan */
+.box::before {
+  display: none;
+}
+
+/* Border kanan — disembunyikan */
+.box::after {
+  display: none;
+}
+
+/* ===== MACHINE TOP: area capit, full width ===== */
+.machine-top,
+.machine-bottom {
+  position: absolute;
+  width: 100%;
+  --h: 100px;
+  height: calc(var(--h) * var(--m));
+}
+
+.machine-top {
+  top: 0;
+  display: flex;
+  align-items: center;
+  z-index: 1;
+  height: 140px;
+}
+
+.machine-top::after {
+  content: '';
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  /* Efek cahaya atas mesin: tipis saja */
+  background: linear-gradient(to bottom, rgba(100,200,255,0.10) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+/* ===== LANTAI MESIN ===== */
+.machine-bottom {
+  position: absolute;
+  bottom: 45px;
+  width: 100%;
+  height: 90px;
+}
+
+.machine-bottom::before {
+  content: none;
+}
+
+.machine-bottom::after {
+  content: none;
+}
+
+/* ===== LUBANG KOLEKSI ===== */
+.floor-hole {
+  position: absolute;
+  bottom: 10px;
+  left: 30px;
+  width: 90px;
+  height: 65px;
+  background: #000;
+  border-radius: 4px;
+}
+
+/* Label HADIAH */
+.floor-hole-label {
+  position: absolute;
+  top: -18px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 10px;
+  font-weight: bold;
+  color: #555;
+  letter-spacing: 1.5px;
+  pointer-events: none;
+  text-transform: uppercase;
+}
+
+/* ===== REL CAPIT ===== */
+.rail {
+  top: 0;
+  left: 0;
+  transition: 0.3s;
+  border: solid var(--blue);
+}
+
+.rail.hori {
+  --h: 5px;
+  width: 100%;
+  background-color: rgb(255, 255, 255);
+  border-width: 2px 0;
+  box-shadow: 0 0 8px rgba(75, 184, 250);
+}
+
+.rail.vert {
+  position: absolute;
+  --h: 70px;
+  --w: 5px;
+  background-color: rgb(255, 255, 255);
+  border-width: 0 2px;
+  box-shadow: 0 0 6px rgba(75, 184, 250);
+}
+
+/* ===== ARM JOINT ===== */
+.arm-joint {
+  position: absolute;
+  top: 0;
+  left: 0;
+  --w: 5px;
+  --h: 5px;
+  transition: 0.3s;
+  z-index: -1;
+}
+
+.arm-joint::after {
+  position: absolute;
+  border: solid var(--blue) 2px;
+  background-color: #fff;
+  --w: 10px;
+  --h: 10px;
+  top: calc(var(--m) * var(--h) * -0.25);
+  left: calc(var(--m) * var(--w) * -0.25);
+}
+
+/* ===== ARM ===== */
+.arm {
+  position: absolute;
+  --w: 7px;
+  --h: 28px;
+  background-color: #fff;
+  box-shadow: 0 0 0 2px var(--blue), 0 0 10px rgba(51, 165, 218, 0.4);
+  transition: 0.3s;
+  margin-top: calc(var(--m) * -1px);
+  margin-left: calc(var(--m) * -1px);
+}
+
+.arm::after {
+  position: absolute;
+  --w: 13px;
+  --h: 7px;
+  bottom: calc(var(--m) * -1px);
+  left: calc(var(--m) * -3px);
+  background-image: url(keranjang/kepala.png);
+}
+
+.arm.missed::after {
+  background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA0AAAAHCAYAAADTcMcaAAAAAXNSR0IArs4c6QAAAENJREFUKFNjZGBgYDBeeus/iCYGnI1WY2QEaTgTpUqMerAak2W3GSjTFKEpADZpxfUPGLYiy+G0CaYImyHkO4+c0AMAWBctfQPWfVQAAAAASUVORK5CYII=);
+}
+
+/* ===== CLAWS ===== */
+.claws {
+  position: absolute;
+  --w: 3px;
+  --h: 10px;
+  bottom: calc(var(--m) * -5px);
+  left: calc(var(--m) * 2.5px);
+}
+
+.claws::before,
+.claws::after {
+  top: 0;
+  --w: 10px;
+  --h: 16px;
+  transition: 0.2s;
+}
+
+.claws::before {
+  left: calc(var(--m) * -10px);
+  background-image: url(keranjang/kiri.png);
+  --close-angle: 45deg;
+  transform-origin: top right;
+}
+
+.claws::after {
+  left: calc(var(--m) * 2.5px);
+  background-image: url(keranjang/kanan.png);
+  --close-angle: -45deg;
+  transform-origin: top left;
+}
+
+.arm.open .claws::before,
+.arm.open .claws::after {
+  rotate: var(--close-angle);
+}
+
+/* ===== SHADOW JOINT ===== */
+.arm-joint::before {
+  --w: 20px;
+  --h: 16px;
+  transform: scale(var(--scale));
+  margin-left: -15px;
+  margin-top: var(--shadow-pos);
+  background-image: url(keranjang/join.png);
+  z-index: -1;
+  opacity: 0.5;
+}
+
+/* ===== CONTROL PANEL: sekarang disembunyikan / transparan ===== */
+.control {
+  display: none; /* Sembunyikan panel kontrol bawah — kita klik langsung keranjang */
+}
+
+/* ===== COLLECTION BOX (atas): lebih ke pojok ===== */
+.collection-box {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  width: 200px;
+  height: 64px;
+  margin: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  z-index: 50;
+  --h: 32px;
+  border-radius: 8px;
+  padding: 4px;
+  backdrop-filter: blur(4px);
+}
+
+.collection-box .toy-wrapper {
+  position: relative;
+  width: calc(100% / 6);
+  display: flex;
+  align-items: end;
+  justify-content: center;
+}
+
+.collection-box .toy-wrapper .toy::after {
+  top: auto;
+  bottom: 0;
+}
+
+.toy-wrapper.squeeze-in {
+  width: 0;
+  animation: squeeze-in forwards 0.4s;
+  animation-delay: 1.4s;
+}
+
+@keyframes squeeze-in {
+  0% { width: 0; }
+  100% { width: calc(100% / 6); }
+}
+
+@keyframes show-toy-2 {
+  0% { opacity: 0; transform: translateY(-100vh); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.toy-wrapper .toy {
+  opacity: 0;
+  transform: translateY(-100vh);
+  animation: forwards show-toy-2 0.8s;
+  animation-delay: 1s;
+}
+
+/* ===== OVERLAY SAAT GRAB ===== */
+.claw-machine.show-overlay::after {
+  content: '';
+  position: fixed;
+  width: 100vw;
+  height: 100vh;
+  left: 0;
+  top: 0;
+  background-color: rgba(248, 255, 208, 0.5);
+  opacity: 0.6;
+  z-index: 6;
+  pointer-events: none;
+}
+
+/* ===== TOY ===== */
+.toy {
+  position: absolute;
+  transition: none;
+  --m: 3;
+  --w: 32px;
+  --h: 32px;
+  transform: rotate(var(--rotate-angle));
+  pointer-events: auto;
+}
+
+.toy::after { content: ''; }
+
+.toy.display {
+  transition: none;
+  transform: scale(6);
+  animation: forwards show-toy-1 0.8s;
+  animation-delay: 1s;
+}
+
+.toy.beauty::after,
+.toy.bolit::after,
+.toy.bread::after,
+.toy.buming::after,
+.toy.coffee::after,
+.toy.fresh::after,
+.toy.pahe::after,
+.toy.robak::after,
+.toy.roti::after,
+.toy.teras::after,
+.toy.xpress::after,
+.toy.yoa::after {
+  --w: 44px; --h: 44px;
+  top: calc(var(--m) * -2px);
+  left: calc(var(--m) * -2px);
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+.toy.beauty::after  { background-image: url("new-kjg/kng-beauty.png"); }
+.toy.bolit::after   { background-image: url("new-kjg/kng-bolit.png"); }
+.toy.bread::after   { background-image: url("new-kjg/kng-bread.png"); }
+.toy.buming::after  { background-image: url("new-kjg/kng-buming.png"); }
+.toy.coffee::after  { background-image: url("new-kjg/kng-coffee.png"); }
+.toy.fresh::after   { background-image: url("new-kjg/kng-fresh.png"); }
+.toy.pahe::after    { background-image: url("new-kjg/kng-pahe.png"); }
+.toy.robak::after   { background-image: url("new-kjg/kng-robak.png"); }
+.toy.roti::after    { background-image: url("new-kjg/kng-roti.png"); }
+.toy.teras::after   { background-image: url("new-kjg/kng-teras.png"); }
+.toy.xpress::after  { background-image: url("new-kjg/kng-xpress.png"); }
+.toy.yoa::after     { background-image: url("new-kjg/kng-yoa.png"); }
+
+.toy.selected { pointer-events: all; }
+
+/* Saat dicapit: keranjang jungkir 180 derajat */
+
+.toy.grabbed {
+  transform: rotate(45deg);
+  transform-origin: center !important;
+  transition: transform 0.35s ease-out;
+  will-change: left, top, transform;
+}
+
+/* Saat jatuh ke lubang: keranjang muter balik pelan-pelan sampai lurus ke bawah */
+.toy.falling {
+  transform: rotate(0deg);
+  transform-origin: center !important;
+  transition: transform 1.4s ease-in, left 0.3s, top 0.3s;
+}
+
+@keyframes show-toy-1 {
+  0% { opacity: 1; transform: scale(3) translateY(0); }
+  30% { opacity: 0; }
+  100% { opacity: 0; transform: scale(1) translateY(-100vh); }
+}
+
+/* ===== PIX ===== */
+.pix,
+.pix::before,
+.pix::after {
+  width: calc(var(--w) * var(--m));
+  height: calc(var(--h) * var(--m));
+  image-rendering: pixelated;
+  background-size: calc(var(--w) * var(--m)) calc(var(--h) * var(--m));
+}
+
+.pix::before,
+.pix::after {
+  position: absolute;
+  content: '';
+}
+
+/* ===== TUTORIAL TEXT ===== */
+.tutorial {
+  position: fixed;
+  top: 20px;
+  left: 80%;
+  transform: translateX(-50%);
+
+  margin: 0;
+  padding: 10px 20px;
+
+  text-align: center;
+  line-height: 1.5;
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+
+  border-radius: 10px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 100;
+  user-select: none;
+  
+  /* --- BAGIAN INI YANG DIUBAH --- */
+  border: 2px solid #ff0000; 
+  animation: rgb-border 3s linear infinite;
+  /* ------------------------------ */
+  
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+/* Animasi RGB Kedap-kedip */
+@keyframes rgb-border {
+  0% { 
+    border-color: #ff0000; 
+    box-shadow: 0 0 10px #ff0000; 
+  }
+  33% { 
+    border-color: #00ff00; 
+    box-shadow: 0 0 10px #00ff00; 
+  }
+  66% { 
+    border-color: #0000ff; 
+    box-shadow: 0 0 10px #0000ff; 
+  }
+  100% { 
+    border-color: #ff0000; 
+    box-shadow: 0 0 10px #ff0000; 
+  }
+}
+
+/* ===== RUNNING TEXT ===== */
+.running-text-container {
+  position: fixed;
+  bottom: 0px;
+  left: 0;
+  width: 100%;
+  background-color: #e00000ff;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  height: 45px;
+  z-index: 30;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.25);
+}
+
+.running-text {
+  display: inline-block;
+  white-space: nowrap;
+  padding-left: 100%;
+  padding-right: 50px;
+  padding-bottom: 2px;
+  color: white;
+  animation: marquee 30s linear infinite;
+}
+
+.running-text img {
+  vertical-align: -6px;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-100%); }
+}
+
+.top-icons {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  z-index: 15;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+}
+
+.top-icon {
+  width: 180px;
+  height: auto;
+  display: block;
+}
+
+/* ===== HADIAH DISPLAY (mobile) ===== */
+.onlymobilecansee {
+  position: fixed;
+  bottom: 55px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  width: 95%;
+  max-width: 480px;
+}
+
+.hadiah-utama {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.hadiah-utama .hadiah-box {
+  width: 100%;
+  max-width: 280px;
+}
+
+.hadiah-umum {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(85px, 1fr));
+  gap: 6px;
+  padding: 0 4px;
+}
+
+.hadiah-box {
+  background: linear-gradient(135deg, #f59e0b, #fde047);
+  color: rgb(0, 0, 0);
+  border-radius: 8px;
+  padding: 6px;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.2;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+}
+
+.hadiah-box b {
+  font-size: 15px;
+  display: block;
+  margin-top: 2px;
+}
+
+.hadiah-box.utama {
+  background: linear-gradient(135deg, #f50b0b, #ff3636);
+  color: #fafafa;
+  font-weight: bold;
+}
+
+/* ===== SIGN ===== */
+.sign {
+  position: fixed;
+  color: rgba(255,255,255,0.7);
+  bottom: 52px;
+  right: 12px;
+  font-size: 10px;
+  z-index: 25;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+
+/* ===== COLLECTION POINT (elemen asli disembunyikan) ===== */
+.collection-point {
+  display: none;
+}
+
+/* label lama dari JS inject, sembunyikan */
+.collection-point-label {
+  display: none;
+}
+
+/* ===== ACTIVE BUTTON ANIMATION ===== */
+.active {
+  animation: pulse infinite 1s;
+  pointer-events: all;
+}
+
+@keyframes pulse {
+  0%, 100% { filter: sepia(0); }
+  50% { filter: sepia(1); }
+}
+
+/* ===== SWAL ===== */
+.swal2-container {
+  z-index: 9999 !important;
+}
+
+/* ===== EDIT BUTTON ===== */
+.btn-edit {
+  position: fixed;
+  top: 15px;
+  right: 15px;
+  padding: 10px 15px;
+  background: #ff9800;
+  border: none;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  z-index: 2000;
+  font-size: 13px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* ===== CUSTOM ALERT ===== */
+#custom-alert .overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 999;
+}
+
+#custom-alert .alert-box {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  padding: 20px 30px;
+  border-radius: 8px;
+  text-align: center;
+  z-index: 1000;
+  min-width: 250px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+#custom-alert button {
+  margin-top: 15px;
+  padding: 8px 16px;
+  background: #3085d6;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#custom-alert button:hover {
+  background: #2573c6;
+}
+
+/* ===== MODAL EDIT ===== */
+.modal-edit {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.6);
+  overflow: auto;
+}
+
+.modal-content {
+  background: #ffffff;
+  margin: 5% auto;
+  padding: 25px;
+  width: 90%;
+  max-width: 800px;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  font-family: sans-serif;
+  animation: modalFade 0.2s ease;
+}
+
+@keyframes modalFade {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+#closeModal {
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+  color: #999;
+}
+#closeModal:hover { color: #000; }
+
+.table-edit {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+.table-edit th {
+  background: #f2f2f2;
+  padding: 10px;
+  text-align: left;
+  border-bottom: 2px solid #ddd;
+}
+.table-edit td {
+  padding: 8px;
+  border-bottom: 1px solid #eee;
+}
+.table-edit input[type="text"],
+.table-edit input[type="number"],
+.table-edit select {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+.table-edit button {
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.table-edit button:hover { opacity: 0.85; }
+.table-edit button[type="submit"] { background: #4CAF50; color: white; }
+.table-edit button[onclick^="hapusHadiah"] { background: #e74c3c; color: white; }
+
+.btn-add {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.btn-add:hover { background: #2980b9; }
+
+.btn-save-all {
+  background: #00ffb3;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.btn-save-all:hover { background: #2980b9; }
+
+/* ===== MEDIA QUERIES ===== */
+@media (max-width: 600px) {
+  .toy {
+    /* Perkecil multiplier agar posisi pseudo-element ::after tetap proporsional */
+    --m: 2.5; 
+  }
+
+  .top-icons {
+    top: 10px;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .top-icon {
+    width: 45%;
+    max-width: 180px;
+  }
+
+  /* Ukuran gambar keranjang di mobile — diperbesar dari 22px */
+  .toy::after,
+  .toy.beauty::after,
+  .toy.bolit::after,
+  .toy.bread::after,
+  .toy.buming::after,
+  .toy.coffee::after,
+  .toy.fresh::after,
+  .toy.pahe::after,
+  .toy.robak::after,
+  .toy.roti::after,
+  .toy.teras::after,
+  .toy.xpress::after,
+  .toy.yoa::after {
+    --w: 36px; /* Ukuran lebar baru di mobile */
+    --h: 36px; /* Ukuran tinggi baru di mobile */
+    
+    /* Memastikan background image menyesuaikan ukuran */
+    background-size: contain; 
+    background-repeat: no-repeat;
+  }
+  
+  /* Opsional: Jika boneka di dalam .toy juga perlu diperkecil */
+  .toy {
+    width: 32px;
+    height: 32px;
+  }
+}
